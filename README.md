@@ -289,3 +289,7 @@ If you find this project useful in your research, please consider cite:
 Welcome to be a member of the OpenPCDet development team by contributing to this repo, and feel free to contact us for any potential contributions. 
 
 
+python demo_video.py   --cfg_file cfgs/V2V4Real_models/pv_rcnn.yaml   --ckpt ckpts/V2V4Real_ford.pth   --data_path /home/idiot/OpenPCDet/data/V2V4Real/points   --ext .npy   --video_out "/home/idiot/OpenPCDet/data/V2V4Real/demo2.avi"
+
+
+
