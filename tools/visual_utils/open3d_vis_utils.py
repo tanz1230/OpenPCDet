@@ -9,11 +9,19 @@ import matplotlib
 import numpy as np
 
 box_colormap = [
-    [1, 1, 1],
-    [0, 1, 0],
-    [0, 1, 1],
-    [1, 1, 0],
+    [1, 0, 0],    # label 0
+    [0, 1, 0],    # label 1
+    [0, 0, 1],    # label 2
+    [1, 1, 0],    # label 3
+    [1, 0, 1],    # label 4
+    [0, 1, 1],    # label 5
+    [0.5, 0.5, 0],  # label 6
+    [0.5, 0, 0.5],  # label 7
+    [0, 0.5, 0.5],  # label 8
+    [0.5, 0.5, 0.5], # label 9
+    [1, 0.5, 0]   # label 10
 ]
+#extend color map
 
 
 def get_coor_colors(obj_labels):
@@ -68,7 +76,7 @@ def draw_scenes(points, gt_boxes=None, ref_boxes=None, ref_labels=None, ref_scor
 
     if ref_boxes is not None:
         vis = draw_box(vis, ref_boxes, (0, 1, 0), ref_labels, ref_scores)
-
+    
     vis.run()
     vis.destroy_window()
 
