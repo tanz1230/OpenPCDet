@@ -30,17 +30,16 @@ def parse_config():
     parser.add_argument('--cfg_file', type=str, default=None, help='specify the config for training')
     parser.add_argument('--batch_size', type=int, default=1, required=False, help='batch size for training')
     parser.add_argument('--workers', type=int, default=4, help='number of workers for dataloader')
-    parser.add_argument('--save_to_file', action='store_true', required=True, default='/home/idiot/Research/LIDAR_Error_Modelling/nuscenes_gt_annotations.csv', help='')
+    parser.add_argument('--save_to_file', type=str, required=True, help='Path to save GT CSV file')
+    parser.add_argument('--log_dir', type=str, required=True, help='Path to save GT CSV file')
 
     args = parser.parse_args()
 
     cfg_from_yaml_file(args.cfg_file, cfg)
     cfg.TAG = Path(args.cfg_file).stem
 
+    #print(cfg)
     np.random.seed(1024)
-
-    if args.set_cfgs is not None:
-        cfg_from_list(args.set_cfgs, cfg)
 
     return args, cfg
 
@@ -48,6 +47,9 @@ def parse_config():
 def main():
     # ─── 1. Load your dataset config ────────────────────────────────────────────
     args, cfg = parse_config()
+    args.log_dir = Path(args.log_dir)
+    log_file = args.log_dir / ('log_eval_%s.txt' % datetime.datetime.now().strftime('%Y%m%d-%H%M%S'))
+    logger = common_utils.create_logger(log_file, rank=cfg.LOCAL_RANK)
 
     # ─── 2. Build the test “dataset” (we only use .infos, no model) ─────────────
     # batch_size and workers don't matter since we won't iterate the loader
@@ -57,37 +59,44 @@ def main():
         batch_size=1,
         dist=False,
         workers=1,
-        training=False
+        training=False,
+        logger=logger
     )
 
     # ─── 3. Walk through infos and pull out GT annotations ─────────────────────
     records = []
     for info in test_set.infos:
-        # these keys come straight from the .pkl infos that OpenPCDet generated:
+        # identifiers
         frame_id     = os.path.basename(info['lidar_path']).split('.')[0]
         sample_token = info.get('token', None)
-        timestamp    = info.get('timestamp', None)        # in microseconds
+        timestamp    = info.get('timestamp', None)  # seconds
 
-        # ‘annos’ holds your ground‐truth boxes and class names
-        annos     = info['annos']
-        gt_boxes  = annos['gt_boxes']   # (N,7) → [x, y, z, dx, dy, dz, yaw]
-        gt_names  = annos['name']       # list of length N
+        # GT arrays
+        gt_boxes = info['gt_boxes']            # (N,9)
+        gt_vels  = info.get('gt_boxes_velocity')  # (N,3), optional
+        gt_names = info['gt_names']            # (N,)
 
         for i, name in enumerate(gt_names):
-            x, y, z, dx, dy, dz, yaw = gt_boxes[i]
+            # unpack: x,y,z, dx,dy,dz, yaw, vx, vy
+            x, y, z, dx, dy, dz, yaw, vx, vy = gt_boxes[i]
             rec = {
                 'frame_id':    frame_id,
                 'sample_token': sample_token,
                 'timestamp':    timestamp,
-                'x':      float(x),
-                'y':      float(y),
-                'z':      float(z),
-                'l':      float(dx),   # length (along X in NuScenes)
-                'w':      float(dy),   # width  (along Y)
-                'h':      float(dz),   # height
-                'heading': float(yaw),
-                'label':   name
+                'x':            float(x),
+                'y':            float(y),
+                'z':            float(z),
+                'l':            float(dx),
+                'w':            float(dy),
+                'h':            float(dz),
+                'heading':      float(yaw),
+                'label':        name,
+                'vx':           float(vx),
+                'vy':           float(vy),
             }
+            # if you also want vz:
+            if gt_vels is not None:
+                rec['vz'] = float(gt_vels[i][2])
             records.append(rec)
 
     # ─── 4. Save to CSV or pickle ───────────────────────────────────────────────
