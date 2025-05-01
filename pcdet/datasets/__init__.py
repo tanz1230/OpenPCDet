@@ -14,6 +14,9 @@ from .lyft.lyft_dataset import LyftDataset
 from .once.once_dataset import ONCEDataset
 from .argo2.argo2_dataset import Argo2Dataset
 from .custom.custom_dataset import CustomDataset
+from .V2XReal.V2XReal_dataset import V2XRealDataset
+from .V2V4Real.V2V4Real_dataset import V2V4RealDataset
+from .V2V4Real_tesla.V2V4Real_tesla_dataset import V2V4RealteslaDataset
 
 __all__ = {
     'DatasetTemplate': DatasetTemplate,
@@ -24,6 +27,9 @@ __all__ = {
     'LyftDataset': LyftDataset,
     'ONCEDataset': ONCEDataset,
     'CustomDataset': CustomDataset,
+    'V2XRealDataset': V2XRealDataset,
+    'V2V4RealDataset': V2V4RealDataset,
+    'V2V4RealteslaDataset': V2V4RealteslaDataset,
     'Argo2Dataset': Argo2Dataset
 }
 
@@ -78,6 +84,37 @@ def build_dataloader(dataset_cfg, class_names, batch_size, dist, root_path=None,
         dataset, batch_size=batch_size, pin_memory=True, num_workers=workers,
         shuffle=(sampler is None) and training, collate_fn=dataset.collate_batch,
         drop_last=False, sampler=sampler, timeout=0, worker_init_fn=partial(common_utils.worker_init_fn, seed=seed)
+    )
+
+    return dataset, dataloader, sampler
+
+def build_dataloader_CP(dataset_cfg, class_names, batch_size, dist, root_path=None, workers=4, seed=None,
+                     logger=None, training=True, merge_all_iters_to_one_epoch=False, total_epochs=0):
+
+    dataset = __all__[dataset_cfg.DATASET](
+        dataset_cfg=dataset_cfg,
+        class_names=class_names,
+        root_path=root_path,
+        training=training,
+        logger=logger,
+    )
+
+    if merge_all_iters_to_one_epoch:
+        assert hasattr(dataset, 'merge_all_iters_to_one_epoch')
+        dataset.merge_all_iters_to_one_epoch(merge=True, epochs=total_epochs)
+
+    if dist:
+        if training:
+            sampler = torch.utils.data.distributed.DistributedSampler(dataset)
+        else:
+            rank, world_size = common_utils.get_dist_info()
+            sampler = DistributedSampler(dataset, world_size, rank, shuffle=False)
+    else:
+        sampler = None
+    dataloader = DataLoader(
+        dataset, batch_size=batch_size, pin_memory=True, num_workers=workers,
+        shuffle=False, collate_fn=dataset.collate_batch,
+        drop_last=False, sampler=None, timeout=0, worker_init_fn=partial(common_utils.worker_init_fn, seed=seed)
     )
 
     return dataset, dataloader, sampler
