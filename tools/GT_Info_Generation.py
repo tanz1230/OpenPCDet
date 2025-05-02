@@ -75,6 +75,11 @@ def main():
         gt_boxes = info['gt_boxes']            # (N,9)
         gt_vels  = info.get('gt_boxes_velocity')  # (N,3), optional
         gt_names = info['gt_names']            # (N,)
+        car_pose = info.get('car_from_global', None)
+        if car_pose is not None:
+            ego_x, ego_y, ego_z = car_pose[:3, 3]
+        else:
+            ego_x = ego_y = ego_z = None
 
         for i, name in enumerate(gt_names):
             # unpack: x,y,z, dx,dy,dz, yaw, vx, vy
@@ -83,6 +88,9 @@ def main():
                 'frame_id':    frame_id,
                 'sample_token': sample_token,
                 'timestamp':    timestamp,
+                'ego_x':        float(ego_x) if ego_x is not None else None,
+                'ego_y':        float(ego_y) if ego_y is not None else None,
+                'ego_z':        float(ego_z) if ego_z is not None else None,
                 'x':            float(x),
                 'y':            float(y),
                 'z':            float(z),
