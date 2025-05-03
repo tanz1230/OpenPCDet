@@ -90,11 +90,6 @@ def main():
         sample_token = info.get('token', None)
         timestamp    = info.get('timestamp', None)
         lidar_path   = info.get('lidar_path', None)
-        car_pose     = info.get('car_from_global', None)
-        if car_pose is not None:
-            ego_x, ego_y, ego_z = car_pose[:3,3]
-        else:
-            ego_x = ego_y = ego_z = None
 
         for b_ix, preds in enumerate(pred_dicts):
             boxes  = preds['pred_boxes'].cpu().numpy()   # (N,7)
@@ -116,9 +111,6 @@ def main():
                     'sample_token':   sample_token,
                     'timestamp':      timestamp,
                     'lidar_path':     lidar_path,
-                    'ego_x_global':   ego_x,
-                    'ego_y_global':   ego_y,
-                    'ego_z_global':   ego_z,
                     'x':              float(x),
                     'y':              float(y),
                     'z':              float(z),
